@@ -326,12 +326,18 @@
       </div>
 
       <div class="card rounded-2xl p-5 mb-5">
+        <h3 class="font-bold text-ink text-sm mb-3"><i class="fa-solid fa-signal text-ink mr-1.5"></i>雲端連線狀態</h3>
+        <p id="fbStatusText" class="text-xs text-inkLight mb-3 leading-relaxed">檢查中...</p>
+        <button id="testSyncBtn" class="w-full bg-ink text-white font-semibold py-2.5 rounded-xl text-sm active:opacity-80 transition">立即測試同步</button>
+      </div>
+
+      <div class="card rounded-2xl p-5 mb-5">
         <h3 class="font-bold text-ink text-sm mb-3"><i class="fa-solid fa-database text-ink mr-1.5"></i>資料備份／匯出</h3>
         <p class="text-xs text-inkLight mb-3 leading-relaxed">如果想把「目前這個瀏覽器裡」的所有內容（行程調整、記帳、清單、照片等）傳給 Claude，用來更新成所有裝置都會看到的標準版本，可以先匯出備份。</p>
         <button id="exportDataBtn" class="w-full bg-ink text-white font-semibold py-2.5 rounded-xl text-sm active:opacity-80 transition"><i class="fa-solid fa-download mr-1"></i>匯出目前資料</button>
       </div>
 
-      <p class="text-center text-[10px] text-inkLight/60 mb-5">App 版本：v4（背景切換立即強制同步）</p>
+      <p class="text-center text-[10px] text-inkLight/60 mb-5">App 版本：v5（連線狀態診斷）</p>
     </section>
 
     <!-- ============ FAVORITES TAB ============ -->
@@ -450,13 +456,17 @@ const firebaseConfig = {
 };
 
 let firebaseDbRef = null;
+let firebaseInitError = null;
 try{
-  if(typeof firebase !== 'undefined'){
+  if(typeof firebase === 'undefined'){
+    firebaseInitError = 'Firebase SDK 未載入（可能是網路連線問題或被封鎖）';
+  } else {
     firebase.initializeApp(firebaseConfig);
     firebaseDbRef = firebase.database().ref('sendoAppData');
   }
 }catch(e){
   console.error('Firebase 初始化失敗', e);
+  firebaseInitError = 'Firebase 初始化失敗：' + (e && e.message ? e.message : String(e));
   firebaseDbRef = null;
 }
 
@@ -2811,10 +2821,37 @@ function setupAppIcon(){
   renderFavoritesFolders();
   renderUsjGuide();
   setupAppIcon();
+  updateFirebaseStatusText();
   if(!firebaseDbRef){
     console.warn('Firebase 尚未連線成功，僅會使用本機儲存，無法與旅伴同步。');
   }
 })();
+
+function updateFirebaseStatusText(){
+  const el = document.getElementById('fbStatusText');
+  if(!el) return;
+  if(firebaseDbRef){
+    el.textContent = '✅ 已成功連線到雲端資料庫，可以與旅伴同步。';
+    el.classList.remove('text-red-600');
+  } else {
+    el.textContent = '❌ 尚未連線成功：' + (firebaseInitError || '未知原因');
+    el.classList.add('text-red-600');
+  }
+}
+
+const testSyncBtn = document.getElementById('testSyncBtn');
+if(testSyncBtn){
+  testSyncBtn.addEventListener('click', async ()=>{
+    testSyncBtn.textContent = '測試中...';
+    if(!firebaseDbRef){
+      showSyncStatus('無法測試：Firebase 未連線', true);
+      testSyncBtn.textContent = '立即測試同步';
+      return;
+    }
+    await pushToCloud();
+    testSyncBtn.textContent = '立即測試同步';
+  });
+}
 
 /* ============================================================
    11. EXPORT DATA
