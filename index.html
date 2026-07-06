@@ -331,7 +331,7 @@
         <button id="exportDataBtn" class="w-full bg-ink text-white font-semibold py-2.5 rounded-xl text-sm active:opacity-80 transition"><i class="fa-solid fa-download mr-1"></i>匯出目前資料</button>
       </div>
 
-      <p class="text-center text-[10px] text-inkLight/60 mb-5">App 版本：v3（Firebase 伺服器時間戳記同步）</p>
+      <p class="text-center text-[10px] text-inkLight/60 mb-5">App 版本：v4（背景切換立即強制同步）</p>
     </section>
 
     <!-- ============ FAVORITES TAB ============ -->
@@ -465,6 +465,7 @@ const _origGetItem = localStorage.getItem.bind(localStorage);
 let isApplyingRemote = false;
 let syncTimer = null;
 let syncStatusEl = null;
+let hasPendingSync = false;
 
 localStorage.setItem = function(key, value){
   _origSetItem(key, value);
@@ -474,9 +475,31 @@ localStorage.setItem = function(key, value){
 };
 
 function scheduleSync(){
+  hasPendingSync = true;
   if(syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(()=>{ pushToCloud(); }, 1500);
+  syncTimer = setTimeout(()=>{
+    hasPendingSync = false;
+    pushToCloud();
+  }, 800);
 }
+
+function flushPendingSync(){
+  if(hasPendingSync){
+    hasPendingSync = false;
+    if(syncTimer) clearTimeout(syncTimer);
+    pushToCloud();
+  }
+}
+
+// Mobile browsers often suspend background tabs before a delayed
+// sync can fire (e.g. switching apps or locking the screen right
+// after an edit). Force an immediate sync whenever the page is
+// about to be hidden or unloaded so no edits get lost.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden') flushPendingSync();
+});
+window.addEventListener('pagehide', flushPendingSync);
+window.addEventListener('blur', flushPendingSync);
 
 function snapshotLocalStorage(){
   const snap = {};
