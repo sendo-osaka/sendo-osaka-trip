@@ -481,6 +481,8 @@ function snapshotLocalStorage(){
   for(let i=0; i<localStorage.length; i++){
     const key = localStorage.key(i);
     if(key === '_syncVersion') continue;
+    if(key.startsWith('firebase:')) continue;
+    if(key.startsWith('firebaseLocalStorageDb')) continue;
     snap[key] = _origGetItem(key);
   }
   return snap;
