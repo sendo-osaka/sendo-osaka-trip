@@ -513,7 +513,6 @@ function showSyncStatus(text, isError){
 async function pushToCloud(){
   if(!firebaseDbRef) return;
   try{
-    const version = Date.now();
     const snapshot = snapshotLocalStorage();
     const payloadStr = JSON.stringify(snapshot);
     if(payloadStr.length > 8 * 1024 * 1024){
@@ -521,8 +520,7 @@ async function pushToCloud(){
       console.warn('Sync payload too large:', payloadStr.length, 'bytes');
       return;
     }
-    await firebaseDbRef.set({ version, data: snapshot });
-    _origSetItem('_syncVersion', String(version));
+    await firebaseDbRef.set({ version: firebase.database.ServerValue.TIMESTAMP, data: snapshot });
     showSyncStatus('已同步給旅伴');
   }catch(err){
     console.error('雲端同步失敗', err);
