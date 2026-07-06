@@ -337,7 +337,7 @@
         <button id="exportDataBtn" class="w-full bg-ink text-white font-semibold py-2.5 rounded-xl text-sm active:opacity-80 transition"><i class="fa-solid fa-download mr-1"></i>匯出目前資料</button>
       </div>
 
-      <p class="text-center text-[10px] text-inkLight/60 mb-5">App 版本：v5（連線狀態診斷）</p>
+      <p class="text-center text-[10px] text-inkLight/60 mb-5">App 版本：v6（購物/收藏照片可點擊放大）</p>
     </section>
 
     <!-- ============ FAVORITES TAB ============ -->
@@ -423,6 +423,20 @@
   <button id="usjPhotoLightboxClose" class="absolute top-5 right-5 text-white text-lg w-10 h-10 flex items-center justify-center rounded-full bg-white/10"><i class="fa-solid fa-xmark"></i></button>
   <button id="usjPhotoLightboxDelete" class="absolute top-5 left-5 text-white text-xs px-3 py-2.5 rounded-full bg-white/10 flex items-center gap-1.5"><i class="fa-solid fa-trash-can text-xs"></i>刪除照片</button>
   <img id="usjPhotoLightboxImg" src="" class="max-w-full max-h-full rounded-xl object-contain">
+</div>
+
+<!-- Shopping Photo Lightbox -->
+<div id="shoppingPhotoLightbox" class="fixed inset-0 bg-black/90 z-[60] hidden items-center justify-center p-6">
+  <button id="shoppingPhotoLightboxClose" class="absolute top-5 right-5 text-white text-lg w-10 h-10 flex items-center justify-center rounded-full bg-white/10"><i class="fa-solid fa-xmark"></i></button>
+  <button id="shoppingPhotoLightboxDelete" class="absolute top-5 left-5 text-white text-xs px-3 py-2.5 rounded-full bg-white/10 flex items-center gap-1.5"><i class="fa-solid fa-trash-can text-xs"></i>刪除照片</button>
+  <img id="shoppingPhotoLightboxImg" src="" class="max-w-full max-h-full rounded-xl object-contain">
+</div>
+
+<!-- Favorites Photo Lightbox -->
+<div id="favoritesPhotoLightbox" class="fixed inset-0 bg-black/90 z-[60] hidden items-center justify-center p-6">
+  <button id="favoritesPhotoLightboxClose" class="absolute top-5 right-5 text-white text-lg w-10 h-10 flex items-center justify-center rounded-full bg-white/10"><i class="fa-solid fa-xmark"></i></button>
+  <button id="favoritesPhotoLightboxDelete" class="absolute top-5 left-5 text-white text-xs px-3 py-2.5 rounded-full bg-white/10 flex items-center gap-1.5"><i class="fa-solid fa-trash-can text-xs"></i>刪除照片</button>
+  <img id="favoritesPhotoLightboxImg" src="" class="max-w-full max-h-full rounded-xl object-contain">
 </div>
 
 <!-- Export Data Modal -->
@@ -2052,6 +2066,40 @@ function closeShoppingFolder(){
   renderShoppingFolders();
 }
 
+let shoppingLightboxPhotoId = null;
+function openShoppingLightbox(photoId){
+  const folders = getShoppingFolders();
+  const folder = folders.find(f => f.id === currentShoppingFolderId);
+  const photo = folder && folder.photos.find(p => p.id === photoId);
+  if(!photo) return;
+  shoppingLightboxPhotoId = photoId;
+  document.getElementById('shoppingPhotoLightboxImg').src = photo.image;
+  const lb = document.getElementById('shoppingPhotoLightbox');
+  lb.classList.remove('hidden');
+  lb.classList.add('flex');
+}
+function closeShoppingLightbox(){
+  const lb = document.getElementById('shoppingPhotoLightbox');
+  lb.classList.add('hidden');
+  lb.classList.remove('flex');
+  shoppingLightboxPhotoId = null;
+}
+document.getElementById('shoppingPhotoLightboxClose').addEventListener('click', closeShoppingLightbox);
+document.getElementById('shoppingPhotoLightboxDelete').addEventListener('click', ()=>{
+  if(!shoppingLightboxPhotoId) return;
+  const fs = getShoppingFolders();
+  const fo = fs.find(f => f.id === currentShoppingFolderId);
+  if(fo){
+    fo.photos = fo.photos.filter(p => p.id !== shoppingLightboxPhotoId);
+    saveShoppingFolders(fs);
+    renderShoppingDetail();
+  }
+  closeShoppingLightbox();
+});
+document.getElementById('shoppingPhotoLightbox').addEventListener('click', (e)=>{
+  if(e.target.id === 'shoppingPhotoLightbox') closeShoppingLightbox();
+});
+
 function renderShoppingDetail(){
   const folders = getShoppingFolders();
   const folder = folders.find(f=>f.id === currentShoppingFolderId);
@@ -2072,7 +2120,7 @@ function renderShoppingDetail(){
   let html = folder.photos.map(p=>`
     <div class="rounded-2xl border border-line bg-white overflow-hidden" data-photo-id="${p.id}">
       <div class="relative aspect-square bg-paperSoft">
-        <img src="${p.image}" class="w-full h-full object-cover">
+        <img src="${p.image}" class="w-full h-full object-cover shopping-photo-thumb cursor-pointer" data-photo-id="${p.id}">
         <button class="photo-delete-btn absolute top-2 right-2 bg-white/90 text-inkLight w-7 h-7 rounded-full flex items-center justify-center" data-photo-id="${p.id}" data-confirming="0" title="刪除照片"><i class="fa-solid fa-trash-can text-xs"></i></button>
       </div>
       <div class="p-2.5 space-y-1.5">
@@ -2088,6 +2136,10 @@ function renderShoppingDetail(){
     </button>`;
 
   grid.innerHTML = html;
+
+  grid.querySelectorAll('.shopping-photo-thumb').forEach(img=>{
+    img.addEventListener('click', ()=> openShoppingLightbox(img.dataset.photoId));
+  });
 
   grid.querySelectorAll('.photo-name-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
@@ -2336,6 +2388,40 @@ function closeFavoritesFolder(){
   renderFavoritesFolders();
 }
 
+let favoritesLightboxPhotoId = null;
+function openFavoritesLightbox(photoId){
+  const folders = getFavoritesFolders();
+  const folder = folders.find(f => f.id === currentFavoritesFolderId);
+  const photo = folder && folder.photos.find(p => p.id === photoId);
+  if(!photo) return;
+  favoritesLightboxPhotoId = photoId;
+  document.getElementById('favoritesPhotoLightboxImg').src = photo.image;
+  const lb = document.getElementById('favoritesPhotoLightbox');
+  lb.classList.remove('hidden');
+  lb.classList.add('flex');
+}
+function closeFavoritesLightbox(){
+  const lb = document.getElementById('favoritesPhotoLightbox');
+  lb.classList.add('hidden');
+  lb.classList.remove('flex');
+  favoritesLightboxPhotoId = null;
+}
+document.getElementById('favoritesPhotoLightboxClose').addEventListener('click', closeFavoritesLightbox);
+document.getElementById('favoritesPhotoLightboxDelete').addEventListener('click', ()=>{
+  if(!favoritesLightboxPhotoId) return;
+  const fs = getFavoritesFolders();
+  const fo = fs.find(f => f.id === currentFavoritesFolderId);
+  if(fo){
+    fo.photos = fo.photos.filter(p => p.id !== favoritesLightboxPhotoId);
+    saveFavoritesFolders(fs);
+    renderFavoritesDetail();
+  }
+  closeFavoritesLightbox();
+});
+document.getElementById('favoritesPhotoLightbox').addEventListener('click', (e)=>{
+  if(e.target.id === 'favoritesPhotoLightbox') closeFavoritesLightbox();
+});
+
 function renderFavoritesDetail(){
   const folders = getFavoritesFolders();
   const folder = folders.find(f => f.id === currentFavoritesFolderId);
@@ -2356,7 +2442,7 @@ function renderFavoritesDetail(){
   let html = folder.photos.map(p => `
     <div class="rounded-2xl border border-line bg-white overflow-hidden" data-photo-id="${p.id}">
       <div class="relative aspect-square bg-paperSoft">
-        <img src="${p.image}" class="w-full h-full object-cover">
+        <img src="${p.image}" class="w-full h-full object-cover favorites-photo-thumb cursor-pointer" data-photo-id="${p.id}">
         <button class="fav-photo-delete-btn absolute top-2 right-2 bg-white/90 text-inkLight w-7 h-7 rounded-full flex items-center justify-center" data-photo-id="${p.id}" data-confirming="0" title="刪除照片"><i class="fa-solid fa-trash-can text-xs"></i></button>
       </div>
       <div class="p-2.5 space-y-1.5">
@@ -2372,6 +2458,10 @@ function renderFavoritesDetail(){
     </button>`;
 
   grid.innerHTML = html;
+
+  grid.querySelectorAll('.favorites-photo-thumb').forEach(img=>{
+    img.addEventListener('click', ()=> openFavoritesLightbox(img.dataset.photoId));
+  });
 
   grid.querySelectorAll('.fav-photo-name-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
