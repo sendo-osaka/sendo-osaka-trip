@@ -100,7 +100,7 @@
 
 <div id="app" class="max-w-md mx-auto min-h-screen relative pb-28">
 
-  <div id="syncStatusBadge" class="fixed top-3 right-3 z-50 bg-ink text-white text-[10px] font-semibold px-3 py-1.5 rounded-full opacity-0 transition-opacity duration-500 pointer-events-none shadow-lg">已同步</div>
+  <div id="syncStatusBadge" class="fixed top-3 right-3 z-50 bg-ink text-white text-[10px] font-semibold px-3 py-1.5 rounded-2xl opacity-0 transition-opacity duration-500 pointer-events-none shadow-lg max-w-[70%] text-right whitespace-normal break-words">已同步</div>
 
   <!-- HEADER -->
   <header class="relative px-6 pt-9 pb-6 bg-paper border-b border-line overflow-hidden">
@@ -499,13 +499,15 @@ function restoreLocalStorage(snap){
   }
 }
 
-function showSyncStatus(text){
+function showSyncStatus(text, isError){
   if(!syncStatusEl) syncStatusEl = document.getElementById('syncStatusBadge');
   if(!syncStatusEl) return;
   syncStatusEl.textContent = text;
   syncStatusEl.classList.remove('opacity-0');
+  syncStatusEl.classList.toggle('bg-red-600', !!isError);
+  syncStatusEl.classList.toggle('bg-ink', !isError);
   clearTimeout(showSyncStatus._t);
-  showSyncStatus._t = setTimeout(()=> syncStatusEl.classList.add('opacity-0'), 2500);
+  showSyncStatus._t = setTimeout(()=> syncStatusEl.classList.add('opacity-0'), isError ? 10000 : 2500);
 }
 
 async function pushToCloud(){
@@ -515,7 +517,7 @@ async function pushToCloud(){
     const snapshot = snapshotLocalStorage();
     const payloadStr = JSON.stringify(snapshot);
     if(payloadStr.length > 8 * 1024 * 1024){
-      showSyncStatus('資料量過大，同步失敗');
+      showSyncStatus('資料量過大，同步失敗', true);
       console.warn('Sync payload too large:', payloadStr.length, 'bytes');
       return;
     }
@@ -524,7 +526,8 @@ async function pushToCloud(){
     showSyncStatus('已同步給旅伴');
   }catch(err){
     console.error('雲端同步失敗', err);
-    showSyncStatus('同步失敗');
+    const msg = (err && err.message) ? err.message : String(err);
+    showSyncStatus('同步失敗: ' + msg, true);
   }
 }
 
@@ -588,6 +591,8 @@ function initialFirebaseSync(){
       }
     }, (err)=>{
       console.error('讀取雲端資料失敗', err);
+      const msg = (err && err.message) ? err.message : String(err);
+      showSyncStatus('讀取失敗: ' + msg, true);
       if(!resolved){ resolved = true; resolve(); }
     });
   });
